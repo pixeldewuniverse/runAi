@@ -23,9 +23,7 @@ export default function GeneratePage() {
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, category }),
       });
 
@@ -37,9 +35,9 @@ export default function GeneratePage() {
       const data: GeneratedOutput = await response.json();
       setOutput(data);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "An unexpected error occurred";
-      setError(message);
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      );
     } finally {
       setLoading(false);
     }
@@ -55,12 +53,14 @@ export default function GeneratePage() {
             {/* Left: Input */}
             <div className="space-y-4">
               <div>
-                <h1 className="text-h2 font-bold mb-2">Generate Your Campaign</h1>
+                <h1 className="text-h2 font-bold mb-2 text-brand-white">
+                  Generate Your Campaign
+                </h1>
                 <p className="text-body text-brand-text-muted">
-                  Describe your business and goals in detail for the best results
+                  Describe your business and goals in detail for the best
+                  results
                 </p>
               </div>
-
               <Card glass>
                 <PromptInput onSubmit={handleGenerate} loading={loading} />
               </Card>
@@ -69,7 +69,9 @@ export default function GeneratePage() {
             {/* Right: Output */}
             <div className="space-y-4">
               <div>
-                <h2 className="text-h2 font-bold mb-2">Your Results</h2>
+                <h2 className="text-h2 font-bold mb-2 text-brand-white">
+                  Your Results
+                </h2>
                 <p className="text-body text-brand-text-muted">
                   {loading
                     ? "Generating your marketing package..."
@@ -79,26 +81,24 @@ export default function GeneratePage() {
                 </p>
               </div>
 
-              <div>
-                {error && (
-                  <Card glass glow="orange" className="bg-red-500 bg-opacity-10">
-                    <p className="text-brand-orange font-semibold">Error</p>
-                    <p className="text-sm text-brand-orange mt-1">{error}</p>
-                  </Card>
-                )}
+              {error && (
+                <div className="rounded-md p-4 bg-red-500/10 border border-red-500/30">
+                  <p className="text-red-400 font-semibold text-sm">Error</p>
+                  <p className="text-red-300 text-sm mt-1">{error}</p>
+                </div>
+              )}
 
-                {loading && <LoadingState />}
+              {loading && <LoadingState />}
 
-                {!loading && output && <OutputViewer output={output} />}
+              {!loading && output && <OutputViewer output={output} />}
 
-                {!loading && !output && !error && (
-                  <Card glass className="text-center py-12">
-                    <p className="text-brand-text-muted">
-                      Your generated marketing package will appear here
-                    </p>
-                  </Card>
-                )}
-              </div>
+              {!loading && !output && !error && (
+                <Card glass className="text-center py-12">
+                  <p className="text-brand-text-muted text-sm">
+                    Your generated marketing package will appear here
+                  </p>
+                </Card>
+              )}
             </div>
           </div>
         </Container>

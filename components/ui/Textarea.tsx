@@ -1,6 +1,7 @@
 import React from "react";
 
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+interface TextareaProps
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
 export function Textarea({ className = "", ...props }: TextareaProps) {
   return (

@@ -17,7 +17,7 @@ export function Card({
     ? "bg-brand-surface backdrop-blur-glass border border-brand-border"
     : "";
 
-  const glowStyles = {
+  const glowMap = {
     purple: "shadow-glow-purple",
     teal: "shadow-glow-teal",
     orange: "shadow-glow-orange",
@@ -25,7 +25,7 @@ export function Card({
 
   return (
     <div
-      className={`rounded-md p-5 transition-all duration-300 ${glassStyles} ${glow ? glowStyles[glow] : ""} ${className}`}
+      className={`rounded-md p-5 transition-all duration-300 ${glassStyles} ${glow ? glowMap[glow] : ""} ${className}`}
       {...props}
     >
       {children}
