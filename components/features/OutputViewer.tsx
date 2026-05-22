@@ -54,7 +54,7 @@ export function OutputViewer({ output, loading = false }: OutputViewerProps) {
       value: "strategy",
       content: (
         <div className="space-y-4">
-          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-family-mono">
+          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-mono">
             {output.strategy}
           </div>
           <Button
@@ -73,7 +73,7 @@ export function OutputViewer({ output, loading = false }: OutputViewerProps) {
       value: "copy",
       content: (
         <div className="space-y-4">
-          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-family-mono">
+          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-mono">
             {output.copy}
           </div>
           <Button
@@ -92,7 +92,7 @@ export function OutputViewer({ output, loading = false }: OutputViewerProps) {
       value: "calendar",
       content: (
         <div className="space-y-4">
-          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-family-mono">
+          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-mono">
             {output.calendar}
           </div>
           <Button
@@ -111,7 +111,7 @@ export function OutputViewer({ output, loading = false }: OutputViewerProps) {
       value: "ads",
       content: (
         <div className="space-y-4">
-          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-family-mono">
+          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-mono">
             {output.ads}
           </div>
           <Button
@@ -130,7 +130,7 @@ export function OutputViewer({ output, loading = false }: OutputViewerProps) {
       value: "seo",
       content: (
         <div className="space-y-4">
-          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-family-mono">
+          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-mono">
             {output.seo}
           </div>
           <Button
@@ -149,7 +149,7 @@ export function OutputViewer({ output, loading = false }: OutputViewerProps) {
       value: "social",
       content: (
         <div className="space-y-4">
-          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-family-mono">
+          <div className="bg-brand-surface border border-brand-border rounded-md p-4 whitespace-pre-wrap text-brand-white text-sm leading-relaxed font-mono">
             {output.social}
           </div>
           <Button
