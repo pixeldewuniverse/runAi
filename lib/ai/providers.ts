@@ -47,7 +47,7 @@ export const PROVIDERS: Record<
   },
 };
 
-export const PROVIDER_ORDER: ProviderId[] = ["gemini", "groq", "openai", "claude"];
+export const PROVIDER_ORDER: ProviderId[] = ["groq", "gemini", "openai", "claude"];
 
 export const providerKey = (id: ProviderId) => process.env[PROVIDERS[id].env]?.trim() || "";
 export const hasProvider = (id: ProviderId) => Boolean(providerKey(id));
@@ -120,7 +120,26 @@ async function geminiRequest(model: string, payload: Record<string, unknown>) {
  *   or fail with 500 — we retry with the schema in the prompt instead.
  * - 503 "overloaded" is retried once after a short pause.
  */
-async function callGemini({ model, system, prompt, schema, maxTokens }: CallInput): Promise<string> {
+const GEMINI_SIBLINGS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
+
+/** Try the chosen model, then other free Flash models when it's overloaded or rate limited. */
+async function callGemini(input: CallInput): Promise<string> {
+  const models = [input.model, ...GEMINI_SIBLINGS.filter((m) => m !== input.model)];
+  let last: unknown;
+  for (const model of models) {
+    try {
+      return await callGeminiModel({ ...input, model });
+    } catch (err) {
+      last = err;
+      const status = (err as ProviderError).status;
+      // Overloaded, rate limited or unknown model: each Flash model has its own quota, try the next.
+      if (!(err instanceof ProviderError) || ![429, 503, 404].includes(status)) throw err;
+    }
+  }
+  throw last;
+}
+
+async function callGeminiModel({ model, system, prompt, schema, maxTokens }: CallInput): Promise<string> {
   const base = {
     systemInstruction: { parts: [{ text: system }] },
     contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -210,7 +229,9 @@ async function callOpenAICompatible(
         type: "json_schema",
         json_schema: { name: "agent_output", schema, strict: provider === "openai" || model.startsWith("openai/gpt-oss") },
       },
-      [provider === "openai" ? "max_completion_tokens" : "max_tokens"]: maxTokens,
+      max_completion_tokens: model.startsWith("openai/gpt-oss") ? Math.max(maxTokens * 2, 8000) : maxTokens,
+      // Same setting as the Dewbit chatbot: gpt-oss reasons first, keep it short.
+      ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
     }),
     signal: AbortSignal.timeout(180_000),
   });
