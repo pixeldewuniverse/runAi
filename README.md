@@ -18,7 +18,7 @@ Ruang Brainstorm
 | Bagian | Teknologi |
 | --- | --- |
 | App + agent | Next.js 16 (App Router, Cache Components), TypeScript, Tailwind v4, PWA |
-| AI | Claude API (`@anthropic-ai/sdk`) dengan structured output + web search |
+| AI | Pilih di Setelan: Gemini (gratis), Groq (gratis), OpenAI, atau Claude, dengan cadangan otomatis. Semua memakai structured output (JSON schema) |
 | Data | Supabase (Postgres + Storage). Tanpa Supabase → in-memory untuk demo lokal |
 | Video | Remotion: komposisi yang sama dipakai untuk preview di browser & render MP4 |
 | Render worker | Node + Remotion renderer + TTS (OpenAI / ElevenLabs), di Railway |
@@ -31,7 +31,7 @@ npm install
 npm run dev
 ```
 
-Buka http://localhost:3000. Tanpa API key, agent memakai jawaban contoh supaya seluruh alur bisa dicoba. Isi `.env.local` (lihat `.env.example`) untuk memakai Claude sungguhan.
+Buka http://localhost:3000. Tanpa API key, agent memakai jawaban contoh supaya seluruh alur bisa dicoba. Isi `.env.local` (lihat `.env.example`) untuk memakai AI sungguhan.
 
 ## Deploy
 
@@ -43,7 +43,7 @@ Buka http://localhost:3000. Tanpa API key, agent memakai jawaban contoh supaya s
 ### 2. App di Vercel
 1. Import repo ini di Vercel.
 2. Isi environment variables:
-   - `ANTHROPIC_API_KEY`
+   - Minimal satu key AI. Gratis: `GEMINI_API_KEY` (Google AI Studio) dan/atau `GROQ_API_KEY`. Berbayar: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
    - `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
    - `APP_PASSCODE`: passcode login (wajib di production, karena setiap run memakai kredit API)
    - `CRON_SECRET`: string acak; Vercel otomatis mengirimnya ke `/api/cron/daily`
@@ -86,6 +86,14 @@ supabase/migrations  skema database
 - **Peran & instruksi agent**: `lib/agents.ts`.
 - **Format output**: `lib/schemas.ts`.
 - **Tampilan video**: `remotion/PixeldewVideo.tsx` (layout: hook, statement, list, code, stat, compare, cta). Hasilnya langsung terlihat di preview halaman konten.
+
+## Penyedia AI
+
+Atur di **Setelan → Penyedia AI**:
+- **Otomatis** memakai yang gratis dulu (Gemini → Groq → OpenAI → Claude), sesuai key yang terpasang.
+- **Cadangan otomatis**: kalau kuota habis, key salah, atau server error, agent pindah ke penyedia berikutnya. Kejadiannya tercatat di feed aktivitas.
+- Batas per menit (free tier) ditunggu sekali sebelum pindah penyedia.
+- Riset internet langsung (Scout & Reza) hanya aktif dengan Claude. Google Search di Gemini tidak termasuk free tier.
 
 ## Ketahanan
 

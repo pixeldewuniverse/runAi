@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { ok } from "@/lib/api";
-import { hasClaude } from "@/lib/llm";
+import { providerChain, getAiSettings } from "@/lib/ai/settings";
+import { PROVIDERS } from "@/lib/ai/providers";
 import { getAgentStatuses } from "@/lib/office";
 import { hasWorker } from "@/lib/render";
 import { db, hasSupabase } from "@/lib/store";
@@ -11,6 +12,7 @@ const PENDING = ["awaiting_pick", "awaiting_script", "awaiting_final"];
 export async function GET() {
   await connection();
   await sweepStale();
+  const aiActive = providerChain(await getAiSettings())[0] ?? null;
   const [agents, events, contents, brainstorms] = await Promise.all([
     getAgentStatuses(),
     db().list("events", { order: { column: "created_at", ascending: false }, limit: 30 }),
@@ -32,6 +34,11 @@ export async function GET() {
       published: contents.filter((c) => c.status === "published").length,
       brainstorms: brainstorms.length,
     },
-    config: { claude: hasClaude(), supabase: hasSupabase(), worker: hasWorker(), store: db().kind },
+    config: {
+      ai: aiActive ? PROVIDERS[aiActive].label : null,
+      supabase: hasSupabase(),
+      worker: hasWorker(),
+      store: db().kind,
+    },
   });
 }

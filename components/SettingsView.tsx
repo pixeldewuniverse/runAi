@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Brand } from "@/lib/brand";
 import { api, usePoll } from "@/lib/client";
 import type { OfficeData } from "@/lib/types";
+import { AiSettingsCard } from "./AiSettingsCard";
 import { PushToggle } from "./PushToggle";
 import { Button, ErrorNote, PageTitle, Section } from "./ui";
 
@@ -44,7 +45,7 @@ export function SettingsView() {
       <Section title="Status sistem">
         <ul className="card divide-y divide-line text-sm">
           {[
-            ["Claude API", office?.config.claude, "ANTHROPIC_API_KEY"],
+            ["AI", office?.config.ai, "GEMINI_API_KEY (gratis) atau key penyedia lain"],
             ["Database Supabase", office?.config.supabase, "NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY"],
             ["Render worker", office?.config.worker, "RENDER_WORKER_URL + RENDER_WORKER_SECRET"],
           ].map(([label, on, env]) => (
@@ -54,11 +55,16 @@ export function SettingsView() {
               </span>
               <span className="flex-1">
                 <span className="font-medium">{label}</span>
+                {typeof on === "string" && <span className="ml-1.5 text-mute">· {on}</span>}
                 {!on && <span className="block font-mono text-[11px] text-mute">isi {String(env)}</span>}
               </span>
             </li>
           ))}
         </ul>
+      </Section>
+
+      <Section title="Penyedia AI">
+        <AiSettingsCard />
       </Section>
 
       <Section title="Notifikasi">

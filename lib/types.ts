@@ -130,5 +130,5 @@ export interface OfficeData {
   events: EventRow[];
   approvals: { id: string; status: ContentStatus; title: string | null }[];
   stats: { contentToday: number; ready: number; published: number; brainstorms: number };
-  config: { claude: boolean; supabase: boolean; worker: boolean; store: "supabase" | "memory" };
+  config: { ai: string | null; supabase: boolean; worker: boolean; store: "supabase" | "memory" };
 }

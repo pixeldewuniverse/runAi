@@ -45,10 +45,10 @@ export function OfficeView() {
         </p>
       </header>
 
-      {data && (!data.config.claude || data.config.store === "memory") && (
+      {data && (!data.config.ai || data.config.store === "memory") && (
         <div className="mb-4 rounded-2xl border border-sun/60 bg-sun/15 px-4 py-3 text-sm">
           <b>Mode demo.</b>{" "}
-          {!data.config.claude && "ANTHROPIC_API_KEY belum diisi — agent memakai jawaban contoh. "}
+          {!data.config.ai && "Belum ada API key AI — agent memakai jawaban contoh. "}
           {data.config.store === "memory" && "Supabase belum diatur — data hilang saat server restart. "}
           <Link href="/settings" className="underline">
             Lihat setelan
