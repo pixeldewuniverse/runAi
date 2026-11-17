@@ -1,151 +1,91 @@
-# RunAI — AI Marketing Generator
+# runAI — Kantor Agent Pixeldew
 
-A production-ready Next.js website for AI-powered marketing campaign generation. Users can input a detailed prompt about their business and receive a complete marketing package with campaign strategy, copy, content calendar, ad briefs, SEO keywords, and social media kit.
+Kantor berisi tim agent AI yang **membuat konten harian** (dari riset tren sampai video jadi) dan **membantu brainstorming project**. Kamu cukup memberi keputusan dari HP: pilih ide, setujui script, setujui video.
 
-## Features
+```
+Content Studio
+  Scout (tren) ─▶ Strat (3 ide) ─▶ [kamu pilih] ─▶ Scripty (script) ─▶ Dira (storyboard)
+  ─▶ [kamu setujui / minta revisi] ─▶ Pubby (caption) ─▶ Vox (voice-over) ─▶ Edi (render)
+  ─▶ [kamu setujui video] ─▶ siap posting
 
-- **One-Click Campaign Generation**: Generate complete marketing campaigns from a single prompt
-- **6 Output Modules**: Strategy, Copy, Content Calendar, Ad Briefs, SEO Keywords, Social Media Kit
-- **Beautiful Dark UI**: Modern glassmorphism design with custom color palette
-- **Streaming AI Integration**: Real-time content generation using Claude Sonnet
-- **Export Options**: Download results as TXT or Markdown
-- **Copy to Clipboard**: Quick copy functionality for each section
-- **Responsive Design**: Fully responsive across mobile, tablet, and desktop
+Ruang Brainstorm
+  Ide mentahmu ─▶ Fasi (rumuskan masalah) ─▶ Reza (riset) ─▶ Kritik (risiko)
+  ─▶ Arka (solusi teknis) ─▶ Pim (project brief) ─▶ [kamu balas] ─▶ putaran berikutnya
+```
 
-## Tech Stack
+## Stack
 
-- **Framework**: Next.js 14 (App Router)
-- **Styling**: Tailwind CSS
-- **Font**: League Spartan from Google Fonts
-- **Language**: TypeScript
-- **AI**: Anthropic Claude Sonnet API
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
+| Bagian | Teknologi |
+| --- | --- |
+| App + agent | Next.js 16 (App Router, Cache Components), TypeScript, Tailwind v4, PWA |
+| AI | Claude API (`@anthropic-ai/sdk`) dengan structured output + web search |
+| Data | Supabase (Postgres + Storage). Tanpa Supabase → in-memory untuk demo lokal |
+| Video | Remotion: komposisi yang sama dipakai untuk preview di browser & render MP4 |
+| Render worker | Node + Remotion renderer + TTS (OpenAI / ElevenLabs), di Railway |
+| Jadwal | Vercel Cron, setiap hari 06.07 WIB (`vercel.json`) |
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Anthropic API Key from [console.anthropic.com](https://console.anthropic.com)
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Create `.env.local` with your API key:
-   ```env
-   ANTHROPIC_API_KEY=sk-ant-your-key-here
-   ```
-
-4. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-### Build for Production
+## Jalankan lokal (mode demo)
 
 ```bash
-npm run build
-npm start
+npm install
+npm run dev
 ```
 
-## Project Structure
+Buka http://localhost:3000. Tanpa API key, agent memakai jawaban contoh supaya seluruh alur bisa dicoba. Isi `.env.local` (lihat `.env.example`) untuk memakai Claude sungguhan.
+
+## Deploy
+
+### 1. Supabase
+1. Buat project baru di supabase.com.
+2. Buka **SQL Editor**, jalankan `supabase/migrations/0001_init.sql` (tabel + bucket `videos`).
+3. Catat `Project URL` dan `service_role key` (Settings → API).
+
+### 2. App di Vercel
+1. Import repo ini di Vercel.
+2. Isi environment variables:
+   - `ANTHROPIC_API_KEY`
+   - `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   - `APP_PASSCODE`: passcode login (wajib di production, karena setiap run memakai kredit API)
+   - `CRON_SECRET`: string acak; Vercel otomatis mengirimnya ke `/api/cron/daily`
+3. Deploy. Buka di iPhone → Share → **Add to Home Screen**.
+
+### 3. Render worker di Railway (opsional, untuk MP4 bersuara)
+1. New Project → Deploy from GitHub repo ini.
+2. Settings → **Root Directory**: `/`. **Config file**: `worker/railway.json` (Dockerfile `worker/Dockerfile`).
+3. Variables: `RENDER_WORKER_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, dan `OPENAI_API_KEY` **atau** `ELEVENLABS_API_KEY`.
+4. Generate domain, lalu di Vercel isi `RENDER_WORKER_URL=https://<domain-railway>` dan `RENDER_WORKER_SECRET` yang sama.
+
+Tanpa worker, alur tetap jalan: video dipreview di browser (tanpa suara), tapi tidak ada file MP4 untuk diunduh.
+
+Tes render lokal: `cd worker && npm install && npm run test:render` → `worker/out/demo.mp4`.
+
+## Struktur
 
 ```
-app/
-  page.tsx                    # Landing page
-  generate/page.tsx           # AI generation page
-  api/generate/route.ts       # Claude API endpoint
-  layout.tsx                  # Root layout
-  globals.css                 # Global styles & design tokens
-
-components/
-  ui/                         # Reusable UI components
-    Button.tsx
-    Card.tsx
-    Container.tsx
-    Input.tsx, Textarea.tsx
-    Tabs.tsx
-    Badge.tsx
-  layout/                     # Layout components
-    Navbar.tsx
-    Footer.tsx
-  features/                   # Feature-specific components
-    PromptInput.tsx
-    OutputViewer.tsx
-    LoadingState.tsx
-    FeatureCard.tsx
-    PricingCard.tsx
-
-lib/
-  types.ts                    # TypeScript type definitions
-
-tailwind.config.ts            # Tailwind configuration with design tokens
+app/                 halaman (Kantor, Konten, Brainstorm, Setelan, Login) + API routes
+  api/content        mulai shift, pilih ide, revisi, approve, dll
+  api/brainstorm     sesi brainstorm & balasan
+  api/cron/daily     dipanggil Vercel Cron tiap pagi
+  api/render/callback  laporan progres dari render worker
+components/          UI (OfficeFloor = denah kantor, Robot = maskot "Dewbot")
+lib/agents.ts        daftar agent, ruangan, dan system prompt masing-masing
+lib/schemas.ts       format JSON output tiap agent (zod)
+lib/pipeline/        alur konten & brainstorm
+lib/llm.ts           pemanggil Claude (+ mode demo)
+lib/store.ts         data layer Supabase / memori
+remotion/            template video Pixeldew (dipakai app & worker)
+worker/              render worker Railway
+supabase/migrations  skema database
 ```
 
-## Design System
+## Mengubah perilaku agent
 
-### Colors
+- **Gaya & identitas brand**: halaman **Setelan** (disimpan di database, dipakai semua agent).
+- **Peran & instruksi agent**: `lib/agents.ts`.
+- **Format output**: `lib/schemas.ts`.
+- **Tampilan video**: `remotion/PixeldewVideo.tsx` (layout: hook, statement, list, code, stat, compare, cta). Hasilnya langsung terlihat di preview halaman konten.
 
-- **Background**: `#000000` (pure black)
-- **Primary**: `#D572E0` (purple)
-- **Secondary**: `#26DED2` (teal)
-- **Accent**: `#D9672E` (orange)
-- **Foreground**: `#FFFFFF` (white)
+## Catatan
 
-### Typography
-
-- **Font**: League Spartan
-- **Sizes**: 72px (H1), 48px (H2), 32px (H3), 14.4px (Body Large), 12px (Body)
-
-### Components
-
-All components follow a dark-first, glassmorphic design pattern with subtle animations and color-coded glows.
-
-## API Integration
-
-The application uses the Anthropic Claude Sonnet model to generate marketing content. The API route:
-
-- Accepts user prompts and category selection
-- Parses XML-tagged output into structured sections
-- Handles errors with user-friendly messages
-
-## Usage
-
-1. Navigate to `/generate`
-2. Select a marketing category (Campaign, Social Media, Email, etc.)
-3. Write a detailed prompt about your business
-4. Click "Generate Now"
-5. View results in tabbed sections
-6. Copy individual sections or download complete output
-
-## Features Checklist
-
-- ✅ League Spartan font loaded via `next/font/google`
-- ✅ All colors using CSS variables and Tailwind config
-- ✅ Sticky glassmorphic navbar
-- ✅ Animated hero background with gradient orbs
-- ✅ Functional /generate page with real API calls
-- ✅ Output parsed into tabs
-- ✅ Copy to clipboard per section
-- ✅ Fully responsive design
-- ✅ Polish loading states
-- ✅ User-friendly error handling
-- ✅ TypeScript strict mode
-- ✅ No authentication required (MVP)
-
-## Environment Variables
-
-```env
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-```
-
-Get your API key from [Anthropic Console](https://console.anthropic.com)
+- Posting otomatis ke TikTok belum ada. Itu butuh TikTok Content Posting API yang harus lolos review TikTok dulu. Sementara: unduh MP4 dan salin caption dari halaman konten.
+- Konten buatan AI yang realistis wajib diberi label AI di TikTok.
