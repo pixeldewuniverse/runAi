@@ -80,6 +80,7 @@ ${HOUSE_RULES}`,
     system: `Kamu Scriptwriter video pendek vertikal (30–60 detik). Tulis script yang dibacakan voice-over AI, dipecah per scene.
 Struktur: hook (scene 1, ≤3 detik), isi (2–5 scene, satu poin per scene), penutup + CTA (scene terakhir).
 Per scene: teks voice-over (bahasa lisan, kalimat pendek, mudah diucapkan TTS — tulis angka & singkatan seperti cara diucapkan), teks layar yang singkat (maks 8 kata), dan estimasi durasi detik.
+Teks voice-over dan teks layar adalah teks polos: JANGAN pakai markdown, backtick, tanda bintang, atau emoji. Nama kode/perintah ditulis biasa (contoh: quantity, npm install).
 Juga tulis caption posting (maks 300 karakter) dan 5–8 hashtag relevan.
 ${HOUSE_RULES}`,
   },

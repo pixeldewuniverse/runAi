@@ -113,11 +113,20 @@ export function SettingsView() {
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Penyedia suara (TTS)">
                 <select className={input} value={brand.voice.provider} onChange={(e) => set("voice", { ...brand.voice, provider: e.target.value as Brand["voice"]["provider"] })}>
+                  <option value="gemini">Gemini TTS (gratis)</option>
                   <option value="openai">OpenAI TTS</option>
                   <option value="elevenlabs">ElevenLabs</option>
                 </select>
               </Field>
-              <Field label={brand.voice.provider === "openai" ? "Voice (mis. alloy, nova, onyx)" : "Voice ID ElevenLabs"}>
+              <Field
+                label={
+                  brand.voice.provider === "gemini"
+                    ? "Voice (mis. Kore, Puck, Charon, Aoede)"
+                    : brand.voice.provider === "openai"
+                      ? "Voice (mis. alloy, nova, onyx)"
+                      : "Voice ID ElevenLabs"
+                }
+              >
                 <input className={input} value={brand.voice.voiceId} onChange={(e) => set("voice", { ...brand.voice, voiceId: e.target.value })} />
               </Field>
             </div>

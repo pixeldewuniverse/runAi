@@ -162,6 +162,16 @@ export async function runScripting(id: string) {
   }
 }
 
+/** Remove markdown the model may add (`code`, **bold**, # headings) — TTS would read it aloud. */
+export function plain(text: string) {
+  return text
+    .replace(/```[a-z]*\n?|```/gi, "")
+    .replace(/[`*_~]+/g, "")
+    .replace(/^#+\s*/gm, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export function mergeScenes(
   script: NonNullable<ContentRow["script"]>,
   storyboard: NonNullable<ContentRow["storyboard"]>,
@@ -177,10 +187,12 @@ export function mergeScenes(
       accent: accents[i % accents.length],
     };
     return {
-      voiceover: s.voiceover,
-      on_screen: s.on_screen,
+      voiceover: plain(s.voiceover),
+      on_screen: plain(s.on_screen),
       seconds: Math.min(Math.max(s.seconds || 4, 2), 15),
       ...b,
+      headline: plain(b.headline),
+      items: b.items.map(plain),
       accent: /^#[0-9a-f]{6}$/i.test(b.accent) ? b.accent : accents[i % accents.length],
     };
   });
