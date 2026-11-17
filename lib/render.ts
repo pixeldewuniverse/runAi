@@ -24,11 +24,7 @@ export async function dispatchRender(contentId: string) {
   const ref = { ref_type: "content" as const, ref_id: contentId };
 
   if (!hasWorker()) {
-    await db().update("contents", contentId, { status: "awaiting_final", updated_at: now() });
-    await logEvent("editor", "Preview siap (render worker belum diatur — video dirender di browser)", {
-      ...ref,
-      kind: "approval",
-    });
+    await browserFallback(contentId, "Preview siap — video dibuat di browser (tombol Buat & unduh video)");
     return;
   }
 
@@ -70,14 +66,33 @@ export async function dispatchRender(contentId: string) {
       signal: AbortSignal.timeout(20_000),
     });
   } catch (err) {
-    await markJobFailed(jobId, `Worker tidak bisa dihubungi: ${err instanceof Error ? err.message : err}`);
-    throw new Error("Render worker tidak bisa dihubungi. Cek apakah service Railway menyala.");
+    const why = err instanceof Error ? err.message : String(err);
+    await markJobFailed(jobId, `Worker tidak bisa dihubungi: ${why}`);
+    await browserFallback(contentId, `Render worker tidak bisa dihubungi (${workerHost()}) — video dibuat di browser saja, tanpa suara`, true);
+    return;
   }
   if (!res.ok) {
-    const text = await res.text();
+    const text = (await res.text()).slice(0, 200);
     await markJobFailed(jobId, `HTTP ${res.status}: ${text}`);
-    throw new Error(`Render worker error ${res.status}: ${text}`);
+    const hint = res.status === 401 ? "RENDER_WORKER_SECRET di Vercel & Railway tidak sama" : `worker error ${res.status}`;
+    await browserFallback(contentId, `Render worker menolak job (${hint}) — video dibuat di browser saja, tanpa suara`, true);
   }
+}
+
+const workerHost = () => {
+  try {
+    return new URL(process.env.RENDER_WORKER_URL ?? "").host || "URL kosong";
+  } catch {
+    return "URL tidak valid";
+  }
+};
+
+/** Skip the worker: the user renders the (silent) MP4 in the browser instead. */
+async function browserFallback(contentId: string, message: string, warn = false) {
+  await setAgent("voice", "idle");
+  await setAgent("editor", warn ? "error" : "idle", warn ? "Worker tidak terjangkau" : null);
+  await db().update("contents", contentId, { status: "awaiting_final", updated_at: now() });
+  await logEvent("editor", message, { ref_type: "content", ref_id: contentId, kind: "approval" });
 }
 
 async function markJobFailed(jobId: string, error: string) {
