@@ -56,15 +56,19 @@ export function PixeldewVideo({ scenes, brand }: VideoProps) {
 
 /* ── Shared pieces ───────────────────────────────────────────── */
 
+/* Dot grid as an SVG pattern (CSS radial-gradient isn't supported by the in-browser renderer). */
 function DotGrid({ ink }: { ink: string }) {
   return (
-    <AbsoluteFill
-      style={{
-        backgroundImage: `radial-gradient(${ink}22 2px, transparent 2px)`,
-        backgroundSize: "36px 36px",
-        opacity: 0.6,
-      }}
-    />
+    <AbsoluteFill style={{ opacity: 0.6 }}>
+      <svg width="100%" height="100%">
+        <defs>
+          <pattern id="pd-dots" width="36" height="36" patternUnits="userSpaceOnUse">
+            <circle cx="18" cy="18" r="2" fill={ink} fillOpacity="0.13" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#pd-dots)" />
+      </svg>
+    </AbsoluteFill>
   );
 }
 
