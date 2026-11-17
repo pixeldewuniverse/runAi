@@ -10,6 +10,7 @@ import {
   FacilitatorSchema,
   ResearchSchema,
 } from "../schemas";
+import { internalSecret } from "../auth";
 import { brandContext, getBrand } from "../settings";
 import { db, now, uid } from "../store";
 import type { BrainstormMessageRow, BrainstormRow } from "../types";
@@ -63,41 +64,81 @@ function render(messages: BrainstormMessageRow[]) {
     .join("\n\n");
 }
 
-export async function runBrainstormRound(id: string) {
+/** Index in ROUND of the next agent to speak, or ROUND.length when the round is complete. */
+function nextStep(messages: BrainstormMessageRow[]) {
+  let lastUser = -1;
+  messages.forEach((m, i) => {
+    if (m.author === "user") lastUser = i;
+  });
+  return messages.length - 1 - lastUser;
+}
+
+/**
+ * Run ONE agent of the current round, then hand off to the next step in a
+ * fresh request. Splitting the round keeps every request well under the
+ * serverless time limit, even when the Researcher uses web search.
+ */
+export async function runBrainstormStep(id: string, origin: string, expected?: number) {
   const ref = { ref_type: "brainstorm" as const, ref_id: id };
   try {
     const session = await db().get("brainstorms", id);
-    if (!session) throw new Error("Sesi tidak ditemukan");
-    const brand = await getBrand();
+    if (!session || session.status !== "running") return;
+    const messages = await getTranscript(id);
+    const idx = nextStep(messages);
+    if (expected !== undefined && expected !== idx) return; // duplicate trigger
 
-    for (const step of ROUND) {
-      const transcript = render(await getTranscript(id));
-      const out = (await withAgent(step.agent, step.task, ref, () =>
-        runAgent({
-          agent: step.agent,
-          schema: step.schema,
-          webSearch: step.webSearch,
-          prompt: `Konteks pemilik project (freelance developer & desainer):\n${brandContext(brand)}\n\nTRANSKRIP DISKUSI SEJAUH INI:\n${transcript}\n\nSekarang giliranmu. Tanggapi berdasarkan seluruh diskusi di atas, terutama masukan terbaru dari pemilik project.`,
-        }),
-      )) as Record<string, unknown>;
-      await addMessage(id, step.agent, out);
-      if (step.agent === "pm") {
-        await db().update("brainstorms", id, {
-          brief: BriefSchema.parse(out),
-          title: String(out.title || session.title),
-        });
-      }
+    if (idx >= ROUND.length) {
+      await db().update("brainstorms", id, { status: "awaiting_user", updated_at: now() });
+      await logEvent("pm", "Project brief siap — balas untuk iterasi berikutnya", { ...ref, kind: "approval" });
+      return;
     }
 
-    await db().update("brainstorms", id, { status: "awaiting_user", updated_at: now() });
-    await logEvent("pm", "Project brief siap — balas untuk iterasi berikutnya", { ...ref, kind: "approval" });
+    const step = ROUND[idx];
+    const brand = await getBrand();
+    const out = (await withAgent(step.agent, step.task, ref, () =>
+      runAgent({
+        agent: step.agent,
+        schema: step.schema,
+        webSearch: step.webSearch,
+        prompt: `Konteks pemilik project (freelance developer & desainer):\n${brandContext(brand)}\n\nTRANSKRIP DISKUSI SEJAUH INI:\n${render(messages)}\n\nSekarang giliranmu. Tanggapi berdasarkan seluruh diskusi di atas, terutama masukan terbaru dari pemilik project.`,
+      }),
+    )) as Record<string, unknown>;
+    await addMessage(id, step.agent, out);
+    await db().update("brainstorms", id, {
+      updated_at: now(),
+      ...(step.agent === "pm" ? { brief: BriefSchema.parse(out), title: String(out.title || session.title) } : {}),
+    });
+
+    await continueBrainstorm(id, origin, idx + 1);
   } catch (err) {
     await db().update("brainstorms", id, {
       status: "failed",
       error: err instanceof Error ? err.message : String(err),
       updated_at: now(),
     });
+    await logEvent("system", "Brainstorm terhenti — buka sesi untuk mengulang", { ...ref, kind: "error", push: true });
   }
+}
+
+/** Trigger the next step through the internal endpoint (or inline when no secret is set). */
+export async function continueBrainstorm(id: string, origin: string, step?: number) {
+  const secret = internalSecret();
+  if (!secret) return runBrainstormStep(id, origin, step);
+  const res = await fetch(`${origin}/api/internal/brainstorm-step`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${secret}` },
+    body: JSON.stringify({ id, step }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`Gagal melanjutkan ke agent berikutnya (HTTP ${res.status})`);
+}
+
+/** Resume a failed session from the agent that failed. */
+export async function retryBrainstorm(id: string) {
+  const s = await db().get("brainstorms", id);
+  if (!s) throw new Error("Sesi tidak ditemukan");
+  if (s.status !== "failed") throw new Error("Sesi tidak dalam status gagal");
+  return db().update("brainstorms", id, { status: "running", error: null, updated_at: now() });
 }
 
 export async function replyBrainstorm(id: string, text: string) {

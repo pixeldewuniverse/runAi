@@ -61,6 +61,8 @@ export interface ContentRow {
   video_url: string | null;
   feedback: string | null;
   error: string | null;
+  /** Status the content was in when it failed — retry resumes from here. */
+  failed_status: ContentStatus | null;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +71,8 @@ export interface RenderJobRow {
   id: string;
   content_id: string;
   status: "queued" | "processing" | "done" | "failed";
+  /** Full job sent to the worker, so the worker can resume it after a restart. */
+  payload: Record<string, unknown> | null;
   output_url: string | null;
   error: string | null;
   created_at: string;
@@ -101,6 +105,14 @@ export interface SettingRow {
   updated_at: string;
 }
 
+export interface PushSubscriptionRow {
+  id: string;
+  endpoint: string;
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } };
+  user_agent: string | null;
+  created_at: string;
+}
+
 export interface Tables {
   agent_status: AgentStatusRow;
   events: EventRow;
@@ -109,6 +121,7 @@ export interface Tables {
   brainstorms: BrainstormRow;
   brainstorm_messages: BrainstormMessageRow;
   settings: SettingRow;
+  push_subscriptions: PushSubscriptionRow;
 }
 export type TableName = keyof Tables;
 

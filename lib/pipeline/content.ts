@@ -34,9 +34,16 @@ function assertStatus(row: ContentRow, ...allowed: ContentStatus[]) {
   }
 }
 
-async function fail(id: string, err: unknown) {
+export async function fail(id: string, err: unknown) {
   const msg = err instanceof Error ? err.message : String(err);
-  await patch(id, { status: "failed", error: msg });
+  const row = await db().get("contents", id);
+  if (!row || row.status === "failed") return;
+  await patch(id, { status: "failed", error: msg, failed_status: row.status });
+  await logEvent("system", `Konten "${row.title ?? "hari ini"}" gagal: ${msg.slice(0, 120)}`, {
+    ...ref(id),
+    kind: "error",
+    push: true,
+  });
 }
 
 /** Step 0: create the row (fast, returned to the caller). */
@@ -55,6 +62,7 @@ export async function createContent(topicHint?: string): Promise<ContentRow> {
     video_url: null,
     feedback: topicHint?.trim() || null,
     error: null,
+    failed_status: null,
     created_at: now(),
     updated_at: now(),
   };
@@ -239,10 +247,22 @@ export async function rejectContent(id: string) {
 }
 
 /** Retry a failed content from the step where it stopped. */
-export async function retryContent(id: string) {
+export async function retryContent(id: string): Promise<ContentStatus> {
   const row = await load(id);
   assertStatus(row, "failed");
-  const status: ContentStatus = !row.ideas ? "researching" : !row.script || !row.picked ? (row.picked ? "scripting" : "awaiting_pick") : "rendering";
-  await patch(id, { status, error: null });
+  const status = resumeStatus(row);
+  await patch(id, { status, error: null, failed_status: null });
+  await logEvent("user", "Mengulang dari langkah terakhir", ref(id));
   return status;
+}
+
+function resumeStatus(row: ContentRow): ContentStatus {
+  if (row.failed_status && ["researching", "scripting", "rendering"].includes(row.failed_status)) {
+    return row.failed_status;
+  }
+  // Older rows without failed_status: infer from what exists.
+  if (!row.ideas) return "researching";
+  if (!row.picked) return "awaiting_pick";
+  if (!row.script) return "scripting";
+  return "rendering";
 }

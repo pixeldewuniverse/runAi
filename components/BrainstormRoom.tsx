@@ -80,7 +80,7 @@ export function BrainstormRoom({ id }: { id: string }) {
         <div className="mt-4 space-y-2">
           <ErrorNote>{session.error}</ErrorNote>
           <Button onClick={() => act("retry")} loading={busy === "retry"}>
-            <RotateCcw size={16} /> Ulangi putaran
+            <RotateCcw size={16} /> Lanjutkan dari yang terhenti
           </Button>
         </div>
       )}

@@ -37,7 +37,7 @@ Buka http://localhost:3000. Tanpa API key, agent memakai jawaban contoh supaya s
 
 ### 1. Supabase
 1. Buat project baru di supabase.com.
-2. Buka **SQL Editor**, jalankan `supabase/migrations/0001_init.sql` (tabel + bucket `videos`).
+2. Buka **SQL Editor**, jalankan berurutan `supabase/migrations/0001_init.sql` lalu `0002_reliability_push.sql`.
 3. Catat `Project URL` dan `service_role key` (Settings → API).
 
 ### 2. App di Vercel
@@ -47,7 +47,9 @@ Buka http://localhost:3000. Tanpa API key, agent memakai jawaban contoh supaya s
    - `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
    - `APP_PASSCODE`: passcode login (wajib di production, karena setiap run memakai kredit API)
    - `CRON_SECRET`: string acak; Vercel otomatis mengirimnya ke `/api/cron/daily`
+   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`: untuk notifikasi. Buat sekali dengan `npx web-push generate-vapid-keys`, `VAPID_SUBJECT` = `mailto:email-kamu`
 3. Deploy. Buka di iPhone → Share → **Add to Home Screen**.
+4. Buka runAI dari Home Screen → **Setelan → Aktifkan notifikasi** (iOS 16.4+).
 
 ### 3. Render worker di Railway (opsional, untuk MP4 bersuara)
 1. New Project → Deploy from GitHub repo ini.
@@ -84,6 +86,12 @@ supabase/migrations  skema database
 - **Peran & instruksi agent**: `lib/agents.ts`.
 - **Format output**: `lib/schemas.ts`.
 - **Tampilan video**: `remotion/PixeldewVideo.tsx` (layout: hook, statement, list, code, stat, compare, cta). Hasilnya langsung terlihat di preview halaman konten.
+
+## Ketahanan
+
+- **Watchdog**: konten/brainstorm yang tidak ada kemajuan (8 menit untuk langkah agent, 25 menit untuk render) otomatis ditandai gagal dan kamu dapat notifikasi. Tombol **Coba lagi** melanjutkan dari langkah yang terhenti, bukan dari awal.
+- **Brainstorm per langkah**: tiap agent berjalan di request terpisah (berantai lewat `/api/internal/brainstorm-step`), jadi satu putaran tidak kena batas waktu 5 menit Vercel.
+- **Render tahan restart**: data job disimpan di `render_jobs.payload`. Saat worker restart/redeploy, job yang belum selesai dilanjutkan otomatis. Hasil render yang datang terlambat tetap diterima.
 
 ## Catatan
 

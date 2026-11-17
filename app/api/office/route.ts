@@ -4,11 +4,13 @@ import { hasClaude } from "@/lib/llm";
 import { getAgentStatuses } from "@/lib/office";
 import { hasWorker } from "@/lib/render";
 import { db, hasSupabase } from "@/lib/store";
+import { sweepStale } from "@/lib/watchdog";
 
 const PENDING = ["awaiting_pick", "awaiting_script", "awaiting_final"];
 
 export async function GET() {
   await connection();
+  await sweepStale();
   const [agents, events, contents, brainstorms] = await Promise.all([
     getAgentStatuses(),
     db().list("events", { order: { column: "created_at", ascending: false }, limit: 30 }),

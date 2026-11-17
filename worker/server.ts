@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import { getBundle, processJob, type RenderJob } from "./render";
+import { getBundle, processJob, recoverJobs, type RenderJob } from "./render";
 
 /*
  * Render worker (deploy on Railway). The Next.js app POSTs a job to /render,
@@ -68,7 +68,7 @@ createServer(async (req, res) => {
   try {
     const job = JSON.parse(raw) as RenderJob;
     if (!job.jobId || !Array.isArray(job.scenes) || !job.callbackUrl) throw new Error("invalid job");
-    queue.push(job);
+    if (!queue.some((q) => q.jobId === job.jobId)) queue.push(job);
     res.writeHead(202, { "content-type": "application/json" });
     res.end(JSON.stringify({ accepted: job.jobId, position: queue.length }));
     void drain();
@@ -80,4 +80,20 @@ createServer(async (req, res) => {
   console.log(`render worker on :${PORT}`);
   // Warm the webpack bundle so the first job starts faster.
   getBundle().then(() => console.log("bundle ready")).catch((e: unknown) => console.error("bundle failed", e));
+  // Resume jobs interrupted by a restart or redeploy.
+  recoverJobs()
+    .then((jobs) => {
+      for (const j of jobs) if (!queue.some((q) => q.jobId === j.jobId)) queue.push(j);
+      if (jobs.length) console.log(`recovered ${jobs.length} job(s)`);
+      void drain();
+    })
+    .catch((e: unknown) => console.error("recovery failed", e));
 });
+
+for (const sig of ["SIGTERM", "SIGINT"] as const) {
+  process.on(sig, () => {
+    // Unfinished jobs stay "queued"/"processing" in the database and are resumed on next boot.
+    console.log(`${sig}: exiting with ${queue.length} queued, running=${running}`);
+    process.exit(0);
+  });
+}

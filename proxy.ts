@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, safeEqual, sessionToken } from "@/lib/auth";
 
 /* Machine endpoints authenticate themselves with their own secrets. */
-const PUBLIC = ["/login", "/api/auth", "/api/render/callback", "/api/cron"];
+const PUBLIC = ["/login", "/api/auth", "/api/render/callback", "/api/cron", "/api/internal"];
 
 export async function proxy(req: NextRequest) {
   const passcode = process.env.APP_PASSCODE;
@@ -24,5 +24,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/|favicon.ico|icon|icons/|apple-icon|manifest.webmanifest|robots.txt).*)"],
+  matcher: ["/((?!_next/|favicon.ico|icon|icons/|sw.js|apple-icon|manifest.webmanifest|robots.txt).*)"],
 };

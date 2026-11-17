@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Brand } from "@/lib/brand";
 import { api, usePoll } from "@/lib/client";
 import type { OfficeData } from "@/lib/types";
+import { PushToggle } from "./PushToggle";
 import { Button, ErrorNote, PageTitle, Section } from "./ui";
 
 const input = "w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-ink/40";
@@ -58,6 +59,10 @@ export function SettingsView() {
             </li>
           ))}
         </ul>
+      </Section>
+
+      <Section title="Notifikasi">
+        <PushToggle />
       </Section>
 
       <Section title="Profil brand">

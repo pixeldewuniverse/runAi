@@ -24,6 +24,7 @@ export interface Store {
   insert<T extends TableName>(table: T, row: Row<T>): Promise<Row<T>>;
   update<T extends TableName>(table: T, id: string, patch: Partial<Row<T>>): Promise<Row<T>>;
   upsert<T extends TableName>(table: T, row: Row<T>): Promise<Row<T>>;
+  remove(table: TableName, id: string): Promise<void>;
 }
 
 const keyOf = (table: TableName): string => (table === "settings" ? "key" : "id");
@@ -85,6 +86,9 @@ const memory: Store = {
     t.set(id, { ...(t.get(id) ?? {}), ...structuredClone(r) });
     return row;
   },
+  async remove(table, id) {
+    memTable(table).delete(id);
+  },
 };
 
 /* ── Supabase ───────────────────────────────────────────────── */
@@ -126,6 +130,10 @@ const supabase: Store = {
   async upsert(table, row) {
     const res = await client().from(table).upsert(row as never).select().single();
     return check(res, `upsert ${table}`) as never;
+  },
+  async remove(table, id) {
+    const res = await client().from(table).delete().eq(keyOf(table), id);
+    check({ data: null, error: res.error }, `delete ${table}`);
   },
 };
 
