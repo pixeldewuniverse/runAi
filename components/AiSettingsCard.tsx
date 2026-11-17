@@ -111,7 +111,7 @@ export function AiSettingsCard() {
           </details>
 
           <p className="text-xs text-mute">
-            Riset tren dari internet (Scout & Reza) hanya aktif dengan Claude. Penyedia lain memakai pengetahuan modelnya sendiri.
+            Riset internet (Scout & Reza) aktif dengan Claude, dan dengan Groq bila browser search tersedia di akunmu. Gemini memakai pengetahuan modelnya sendiri.
           </p>
 
           {msg && (msg.ok ? <p className="rounded-xl bg-dew/20 px-3 py-2 text-sm">{msg.text}</p> : <ErrorNote>{msg.text}</ErrorNote>)}

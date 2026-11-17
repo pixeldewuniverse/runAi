@@ -10,6 +10,7 @@ const IDEAS = [
     pillar: "Tips AI untuk kerja",
     hook: "Kode dari AI berantakan? Masalahnya di prompt kamu.",
     angle: "Kasih konteks stack, batasan, dan contoh output — hasilnya langsung beda.",
+    key_points: ["Sebut stack & versi di awal prompt", "Tulis batasan: tanpa library tambahan", "Tempel contoh output yang diinginkan"],
     format: "List + potongan kode",
     why: "Masalah sehari-hari audiens, langsung bisa dipraktikkan.",
   },
@@ -18,6 +19,7 @@ const IDEAS = [
     pillar: "Web dev praktis",
     hook: "File tailwind.config kamu sudah nggak wajib lagi.",
     angle: "Tunjukkan @theme di CSS dan kenapa ini mempercepat setup project.",
+    key_points: ["@import tailwindcss menggantikan 3 directive", "Token warna ditulis di @theme", "Plugin dipasang lewat @plugin"],
     format: "Compare lama vs baru + kode",
     why: "Banyak yang masih bingung saat upgrade; konten evergreen.",
   },
@@ -26,6 +28,7 @@ const IDEAS = [
     pillar: "Behind the scenes freelance",
     hook: "Jangan pernah jual logo per jam.",
     angle: "Harga berdasarkan paket deliverable dan nilai bisnis klien.",
+    key_points: ["Buat 3 paket: basic, standar, premium", "Hitung jumlah revisi & file final", "Tambah biaya lisensi untuk brand besar"],
     format: "Statement + list",
     why: "Topik yang selalu dicari freelancer pemula.",
   },
@@ -43,31 +46,21 @@ export function mockOutput(agent: AgentId, prompt: string): unknown {
       };
     case "strategist":
       return { ideas: IDEAS };
-    case "scriptwriter": {
+    case "scriptwriter":
+    case "reviewer": {
       const revise = prompt.includes("REVISI");
-      return {
+      const script = {
         title: revise ? "3 prompt biar kode AI rapi (revisi)" : "3 prompt biar kode AI rapi",
-        scenes: [
-          { voiceover: "Kode dari AI berantakan? Masalahnya bukan di AI-nya, tapi di prompt kamu.", on_screen: "Kode AI berantakan?", seconds: 4 },
-          { voiceover: "Satu. Sebutkan stack kamu. Next.js, TypeScript, Tailwind. Biar AI nggak nebak.", on_screen: "1. Sebut stack-nya", seconds: 6 },
-          { voiceover: "Dua. Kasih batasan. Misalnya, jangan pakai library tambahan.", on_screen: "2. Kasih batasan", seconds: 5 },
-          { voiceover: "Tiga. Tunjukkan contoh output yang kamu mau. AI paling jago meniru pola.", on_screen: "3. Kasih contoh", seconds: 6 },
-          { voiceover: "Simpan video ini, dan follow Pixeldew buat tips harian.", on_screen: "Follow @pixeldew", seconds: 4 },
-        ],
-        caption: "Prompt yang jelas = kode yang rapi. Coba 3 trik ini di project kamu berikutnya 👇",
+        scenes: DEMO_SCRIPT,
+        caption: "Prompt yang jelas = kode yang rapi. Simpan dulu, coba di project berikutnya 👇",
         hashtags: ["#webdev", "#ai", "#nextjs", "#freelancer", "#belajarcoding", "#tipsai"],
       };
+      return agent === "reviewer"
+        ? { score: 7, issues: ["Hook bisa lebih spesifik", "Scene 3 butuh contoh nyata"], script }
+        : script;
     }
     case "director":
-      return {
-        scenes: [
-          { layout: "hook", headline: "Kode AI berantakan?", items: [], code: "", stat: "", accent: "#FF7A45" },
-          { layout: "code", headline: "Sebut stack-nya", items: [], code: "Stack: Next.js 16, TS,\nTailwind v4.\nTulis komponen Button.", stat: "", accent: "#2BD9B4" },
-          { layout: "statement", headline: "Kasih batasan yang jelas", items: [], code: "", stat: "", accent: "#7C5CFF" },
-          { layout: "list", headline: "Kasih contoh output", items: ["Format file", "Gaya penamaan", "Struktur folder"], code: "", stat: "", accent: "#FFC93C" },
-          { layout: "cta", headline: "Follow @pixeldew", items: [], code: "", stat: "", accent: "#2BD9B4" },
-        ],
-      };
+      return { scenes: DEMO_BOARD };
     case "publisher":
       return {
         caption: "Prompt yang jelas = kode yang rapi. Coba 3 trik ini di project kamu berikutnya 👇",
@@ -132,3 +125,27 @@ export function mockOutput(agent: AgentId, prompt: string): unknown {
       return { ideas: [pick(IDEAS)] };
   }
 }
+
+const DEMO_SCRIPT = [
+  { voiceover: "Kode dari AI sering berantakan. Masalahnya bukan di AI-nya, tapi di prompt kamu.", on_screen: "Kode AI berantakan?", detail: "", seconds: 4 },
+  { voiceover: "Tujuh puluh persen revisi yang aku lakukan datang dari prompt yang terlalu singkat.", on_screen: "Prompt pendek = revisi", detail: "Dari 20 project terakhir, revisi turun drastis setelah prompt dirapikan", seconds: 4 },
+  { voiceover: "Satu. Sebut stack dan versinya di awal, biar AI nggak nebak.", on_screen: "Sebut stack & versi", detail: "Next.js 16, TypeScript, Tailwind v4", seconds: 5 },
+  { voiceover: "Dua. Kasih batasan yang jelas. Misalnya, jangan pakai library tambahan.", on_screen: "Kasih batasan", detail: "Tanpa library baru, maksimal 80 baris", seconds: 5 },
+  { voiceover: "Bedanya kelihatan banget. Prompt asal-asalan versus prompt yang lengkap.", on_screen: "Asal vs lengkap", detail: "", seconds: 5 },
+  { voiceover: "Tiga. Tempel contoh output yang kamu mau. AI paling jago meniru pola.", on_screen: "Kasih contoh output", detail: "Format file, gaya penamaan, struktur folder", seconds: 5 },
+  { voiceover: "Coba sekarang: buka chat AI, tulis stack, batasan, dan contoh. Lalu bandingkan hasilnya.", on_screen: "Coba sekarang", detail: "Stack + batasan + contoh = kode rapi", seconds: 5 },
+  { voiceover: "Simpan video ini dan follow Pixeldew buat tips harian.", on_screen: "Follow @pixeldew", detail: "", seconds: 3 },
+];
+
+const E = { body: "", items: [] as string[], items_b: [] as string[], labels: [] as string[], code: "", stat: "" };
+export const DEMO_BOARD = [
+  { ...E, layout: "hook", theme: "dark", headline: "Kode AI berantakan?", body: "3 trik prompt biar hasilnya rapi", accent: "#FF7A45" },
+  { ...E, layout: "stat", theme: "light", headline: "revisi karena prompt pendek", body: "Dari 20 project terakhir", stat: "70%", accent: "#7C5CFF" },
+  { ...E, layout: "chat", theme: "light", headline: "Sebut stack & versi", items: ["Pakai Next.js 16, TypeScript, Tailwind v4. Buat komponen Button.", "Siap! Ini Button dengan varian primary & ghost, typed props, dan kelas Tailwind v4."], accent: "#2BD9B4" },
+  { ...E, layout: "tip", theme: "accent", headline: "Kasih batasan", body: "Tanpa library baru, maksimal 80 baris, pakai server component.", accent: "#FFC93C" },
+  { ...E, layout: "compare", theme: "light", headline: "Asal vs lengkap", labels: ["Asal", "Lengkap"], items: ["buat button", "hasil acak"], items_b: ["stack + versi", "batasan jelas", "contoh output"], accent: "#2BD9B4" },
+  { ...E, layout: "steps", theme: "dark", headline: "Kasih contoh output", items: ["Format file", "Gaya penamaan", "Struktur folder"], accent: "#7C5CFF" },
+  { ...E, layout: "code", theme: "light", headline: "Template prompt", code: "Stack: Next.js 16 + TS\nBatasan: tanpa library baru\nContoh: <tempel kode>\nTugas: buat Button", body: "Simpan dan pakai ulang", accent: "#FF7A45" },
+  { ...E, layout: "cta", theme: "dark", headline: "Follow buat tips harian", accent: "#2BD9B4" },
+];
+export { DEMO_SCRIPT };

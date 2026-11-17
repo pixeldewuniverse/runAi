@@ -1,7 +1,7 @@
 import "server-only";
 import { runAgent } from "../llm";
 import { logEvent, setAgent, withAgent } from "../office";
-import { IdeasSchema, PublishSchema, ScriptSchema, StoryboardSchema, TrendsSchema, type Idea } from "../schemas";
+import { IdeasSchema, PublishSchema, ReviewSchema, ScriptSchema, StoryboardSchema, TrendsSchema, type Idea, type StoryboardScene } from "../schemas";
 import { brandContext, getBrand } from "../settings";
 import { db, now, uid } from "../store";
 import type { ContentRow, ContentStatus, RenderScene } from "../types";
@@ -131,19 +131,37 @@ export async function runScripting(id: string) {
         ? `\n\nREVISI — script sebelumnya:\n${JSON.stringify(row.script, null, 2)}\n\nCatatan revisi dari pemilik brand: ${row.feedback}\nPerbaiki sesuai catatan, pertahankan bagian yang sudah bagus.`
         : "";
 
-    const script = await withAgent("scriptwriter", revision ? "Merevisi script" : "Menulis script", ref(id), () =>
+    const draft = await withAgent("scriptwriter", revision ? "Merevisi script" : "Menulis script", ref(id), () =>
       runAgent({
         agent: "scriptwriter",
         schema: ScriptSchema,
-        prompt: `${ctx}\n\nIde terpilih:\n${JSON.stringify(row.picked, null, 2)}\n\nTulis script video 30–60 detik. CTA penutup: "${brand.cta}".${revision}`,
+        maxTokens: 5000,
+        prompt: `${ctx}\n\nIde terpilih:\n${JSON.stringify(row.picked, null, 2)}\n\nRiset pendukung dari Scout:\n${JSON.stringify(row.trends?.trends ?? [], null, 2)}\n\nTulis script video 35–60 detik yang padat informasi. CTA penutup: "${brand.cta}".${revision}`,
       }),
     );
+
+    // Second pair of eyes: score the draft and return an improved version.
+    const script = await withAgent("reviewer", "Mengecek & memperbaiki script", ref(id), async () => {
+      try {
+        const review = await runAgent({
+          agent: "reviewer",
+          schema: ReviewSchema,
+          maxTokens: 6000,
+          prompt: `${ctx}\n\nIde:\n${JSON.stringify(row.picked, null, 2)}${row.feedback ? `\n\nCatatan pemilik brand yang WAJIB dipenuhi: ${row.feedback}` : ""}\n\nDraft script:\n${JSON.stringify(draft, null, 2)}`,
+        });
+        await logEvent("reviewer", `Nilai draft ${review.score}/10 — ${review.issues.slice(0, 2).join("; ") || "sudah bagus"}`, ref(id));
+        return review.script.scenes.length >= 3 ? review.script : draft;
+      } catch {
+        return draft; // review is a bonus; never block the pipeline on it
+      }
+    });
 
     const storyboard = await withAgent("director", "Membuat storyboard", ref(id), () =>
       runAgent({
         agent: "director",
         schema: StoryboardSchema,
-        prompt: `${ctx}\n\nScript (${script.scenes.length} scene):\n${JSON.stringify(script.scenes, null, 2)}\n\nBuat storyboard dengan jumlah scene SAMA PERSIS (${script.scenes.length}), urutan sama.`,
+        maxTokens: 6000,
+        prompt: `${ctx}\n\nScript (${script.scenes.length} scene):\n${JSON.stringify(script.scenes, null, 2)}\n\nBuat storyboard dengan jumlah scene SAMA PERSIS (${script.scenes.length}), urutan sama. Ingat aturan variasi layout & tema.`,
       }),
     );
 
@@ -177,11 +195,16 @@ export function mergeScenes(
   storyboard: NonNullable<ContentRow["storyboard"]>,
   accents: string[],
 ): RenderScene[] {
+  const last = script.scenes.length - 1;
   return script.scenes.map((s, i) => {
-    const b = storyboard.scenes[i] ?? {
-      layout: i === 0 ? "hook" : i === script.scenes.length - 1 ? "cta" : "statement",
+    const b: StoryboardScene = storyboard.scenes[i] ?? {
+      layout: i === 0 ? "hook" : i === last ? "cta" : "statement",
+      theme: i === 0 || i === last ? "dark" : i % 2 ? "light" : "accent",
       headline: s.on_screen,
+      body: s.detail ?? "",
       items: [],
+      items_b: [],
+      labels: [],
       code: "",
       stat: "",
       accent: accents[i % accents.length],
@@ -191,8 +214,12 @@ export function mergeScenes(
       on_screen: plain(s.on_screen),
       seconds: Math.min(Math.max(s.seconds || 4, 2), 15),
       ...b,
-      headline: plain(b.headline),
-      items: b.items.map(plain),
+      headline: plain(b.headline || s.on_screen),
+      // Fall back to the script's on-screen detail so information is never lost.
+      body: plain(b.body || (["hook", "cta"].includes(b.layout) ? "" : (s.detail ?? ""))),
+      items: (b.items ?? []).map(plain).filter(Boolean),
+      items_b: (b.items_b ?? []).map(plain).filter(Boolean),
+      labels: (b.labels ?? []).map(plain),
       accent: /^#[0-9a-f]{6}$/i.test(b.accent) ? b.accent : accents[i % accents.length],
     };
   });
