@@ -25,7 +25,10 @@ type Report = (body: Record<string, unknown>) => Promise<void>;
 
 /* ── Storage ─────────────────────────────────────────────────── */
 
-const supabase = () =>
+export const hasSupabase = () =>
+  Boolean((process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL) && process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+export const supabase = () =>
   createClient(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
   });
@@ -131,4 +134,42 @@ export async function processJob(job: RenderJob, report: Report) {
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+/**
+ * After a restart, pick up jobs that were queued or mid-render. Only the most
+ * recent job of a content that is still waiting for its video is resumed;
+ * older ones are marked superseded.
+ */
+export async function recoverJobs(): Promise<RenderJob[]> {
+  if (!hasSupabase()) return [];
+  const sb = supabase();
+  const since = new Date(Date.now() - 6 * 3600_000).toISOString();
+  const { data: jobs, error } = await sb
+    .from("render_jobs")
+    .select("id, content_id, payload, created_at")
+    .in("status", ["queued", "processing"])
+    .gte("created_at", since)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`recover: ${error.message}`);
+
+  const latest = new Map<string, { id: string; payload: RenderJob | null }>();
+  for (const j of jobs ?? []) latest.set(j.content_id, { id: j.id, payload: j.payload as RenderJob | null });
+
+  const resumable: RenderJob[] = [];
+  for (const j of jobs ?? []) {
+    const keep = latest.get(j.content_id)?.id === j.id && j.payload;
+    if (keep) {
+      const { data: content } = await sb.from("contents").select("status").eq("id", j.content_id).maybeSingle();
+      if (content?.status === "rendering") {
+        resumable.push(j.payload as RenderJob);
+        continue;
+      }
+    }
+    await sb
+      .from("render_jobs")
+      .update({ status: "failed", error: "Dilewati saat worker restart (sudah tidak relevan)", updated_at: new Date().toISOString() })
+      .eq("id", j.id);
+  }
+  return resumable;
 }

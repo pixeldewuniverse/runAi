@@ -1,5 +1,6 @@
 import "server-only";
-import { AGENTS, getAgent, type AgentId } from "./agents";
+import { AGENT_MAP, AGENTS, getAgent, type AgentId } from "./agents";
+import { notify } from "./push";
 import { db, now, uid } from "./store";
 import type { AgentState, AgentStatusRow, EventRow } from "./types";
 
@@ -21,12 +22,28 @@ export async function setAgent(id: AgentId, state: AgentState, task: string | nu
 export async function logEvent(
   agent_id: EventRow["agent_id"],
   message: string,
-  opts: { kind?: EventRow["kind"]; ref_type?: EventRow["ref_type"]; ref_id?: string | null } = {},
+  opts: {
+    kind?: EventRow["kind"];
+    ref_type?: EventRow["ref_type"];
+    ref_id?: string | null;
+    /** Push to the phone. Defaults to true for "approval" events. */
+    push?: boolean;
+  } = {},
 ) {
+  const kind = opts.kind ?? "info";
+  if (opts.push ?? kind === "approval") {
+    const who = agent_id in AGENT_MAP ? AGENT_MAP[agent_id as AgentId].name : "runAI";
+    await notify({
+      title: kind === "error" ? "⚠️ Ada yang gagal" : `${who} butuh keputusanmu`,
+      body: message,
+      url: opts.ref_id ? `/${opts.ref_type === "brainstorm" ? "brainstorm" : "content"}/${opts.ref_id}` : "/",
+      tag: opts.ref_id ?? undefined,
+    });
+  }
   await db().insert("events", {
     id: uid(),
     agent_id,
-    kind: opts.kind ?? "info",
+    kind,
     message,
     ref_type: opts.ref_type ?? null,
     ref_id: opts.ref_id ?? null,

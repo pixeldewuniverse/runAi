@@ -15,12 +15,14 @@ import {
 } from "@/lib/pipeline/content";
 import { IdeaSchema } from "@/lib/schemas";
 import { db } from "@/lib/store";
+import { sweepStale } from "@/lib/watchdog";
 
 export const maxDuration = 300;
 
 export async function GET(_req: Request, ctx: RouteContext<"/api/content/[id]">) {
   await connection();
   const { id } = await ctx.params;
+  await sweepStale();
   const row = await db().get("contents", id);
   return row ? ok(row) : fail("Konten tidak ditemukan", 404);
 }

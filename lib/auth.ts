@@ -22,3 +22,13 @@ export function bearerOk(req: Request, secret: string | undefined) {
   const h = req.headers.get("authorization") ?? "";
   return safeEqual(h, `Bearer ${secret}`);
 }
+
+/** Secret for the app calling its own internal endpoints (step chaining). */
+export function internalSecret(): string | undefined {
+  return (
+    process.env.INTERNAL_SECRET ||
+    process.env.CRON_SECRET ||
+    process.env.APP_PASSCODE ||
+    (process.env.NODE_ENV !== "production" ? "dev-internal" : undefined)
+  );
+}
