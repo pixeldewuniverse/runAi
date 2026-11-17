@@ -16,7 +16,7 @@ export const BrandSchema = z.object({
     accents: z.array(z.string()),
   }),
   voice: z.object({
-    provider: z.enum(["openai", "elevenlabs"]),
+    provider: z.enum(["gemini", "openai", "elevenlabs"]),
     voiceId: z.string(),
   }),
 });
@@ -38,5 +38,5 @@ export const DEFAULT_BRAND: Brand = {
     ink: "#121218",
     accents: ["#2BD9B4", "#7C5CFF", "#FF7A45", "#FFC93C"],
   },
-  voice: { provider: "openai", voiceId: "alloy" },
+  voice: { provider: "gemini", voiceId: "Kore" },
 };

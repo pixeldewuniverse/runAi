@@ -11,7 +11,11 @@ import type { Idea } from "@/lib/schemas";
 import type { ContentRow } from "@/lib/types";
 import { Robot } from "./Robot";
 import { Button, Chip, ErrorNote, Section } from "./ui";
+import { DownloadVideo } from "./DownloadVideo";
 import { VideoPreview } from "./VideoPreview";
+
+const fileNameFor = (c: ContentRow) =>
+  `pixeldew-${(c.title ?? "konten").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40)}`;
 
 const WORKING: Partial<Record<ContentRow["status"], { agents: AgentId[]; text: string }>> = {
   researching: { agents: ["scout", "strategist"], text: "Scout sedang riset tren, lalu Strat menyusun 3 ide…" },
@@ -110,9 +114,9 @@ export function ContentDetail({ id }: { id: string }) {
             ) : c.scenes && brand ? (
               <>
                 <VideoPreview scenes={c.scenes} brand={brand} />
-                <p className="mt-2 text-center text-xs text-mute">
-                  Render worker belum diatur — ini preview di browser. Atur RENDER_WORKER_URL untuk MP4 dengan suara.
-                </p>
+                <div className="mt-3 flex justify-center">
+                  <DownloadVideo scenes={c.scenes} brand={brand} fileName={fileNameFor(c)} />
+                </div>
               </>
             ) : null}
           </Section>
@@ -135,10 +139,10 @@ export function ContentDetail({ id }: { id: string }) {
             ) : c.scenes && brand ? (
               <VideoPreview scenes={c.scenes} brand={brand} />
             ) : null}
-            {!c.video_url && (
-              <p className="mt-2 text-center text-xs text-mute">
-                File MP4 dengan suara dibuat oleh render worker. Atur RENDER_WORKER_URL untuk mengaktifkannya.
-              </p>
+            {!c.video_url && c.scenes && brand && (
+              <div className="mt-3 flex justify-center">
+                <DownloadVideo scenes={c.scenes} brand={brand} fileName={fileNameFor(c)} />
+              </div>
             )}
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               {c.video_url && (

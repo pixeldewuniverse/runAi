@@ -54,10 +54,10 @@ Buka http://localhost:3000. Tanpa API key, agent memakai jawaban contoh supaya s
 ### 3. Render worker di Railway (opsional, untuk MP4 bersuara)
 1. New Project → Deploy from GitHub repo ini.
 2. Settings → **Root Directory**: `/`. **Config file**: `worker/railway.json` (Dockerfile `worker/Dockerfile`).
-3. Variables: `RENDER_WORKER_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, dan `OPENAI_API_KEY` **atau** `ELEVENLABS_API_KEY`.
+3. Variables: `RENDER_WORKER_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, dan key TTS: `GEMINI_API_KEY` (gratis), `OPENAI_API_KEY`, atau `ELEVENLABS_API_KEY`. Pilihan suara diatur di Setelan → Profil brand; kalau penyedia pilihan gagal, worker mencoba yang lain.
 4. Generate domain, lalu di Vercel isi `RENDER_WORKER_URL=https://<domain-railway>` dan `RENDER_WORKER_SECRET` yang sama.
 
-Tanpa worker, alur tetap jalan: video dipreview di browser (tanpa suara), tapi tidak ada file MP4 untuk diunduh.
+Tanpa worker, alur tetap jalan: tombol **Buat & unduh video** di halaman konten merender MP4 langsung di browser (WebCodecs, `@remotion/web-renderer`), tanpa suara. Di iPhone/iPad file dibuka lewat share sheet → **Save Video**. Rendering di browser memakai Remotion Free License (individu/perusahaan maks. 3 orang).
 
 Tes render lokal: `cd worker && npm install && npm run test:render` → `worker/out/demo.mp4`.
 
