@@ -76,8 +76,9 @@ export class ProviderError extends Error {
     if (this.status === 401 || this.status === 403) return `API key ${name} tidak valid atau tidak punya akses`;
     if (this.status === 429) return `Kuota/batas request ${name} habis untuk sementara`;
     if (this.status === 404) return `Model ${name} tidak ditemukan — cek nama model di Setelan`;
-    if (this.status === 402) return `Saldo ${name} habis`;
-    if (this.status >= 500) return `Server ${name} sedang bermasalah`;
+    if (this.status === 402 || /credit balance|insufficient_quota|billing/i.test(this.message))
+      return `Saldo/kredit ${name} habis — isi saldo atau pakai penyedia gratis`;
+    if (this.status >= 500) return `${name} error ${this.status}: ${this.message.slice(0, 160)}`;
     return `${name}: ${this.message.slice(0, 200)}`;
   }
 }
@@ -90,38 +91,100 @@ async function failFrom(provider: ProviderId, res: Response): Promise<never> {
     msg = j.error?.message ?? j.message ?? text;
   } catch {}
   // Some providers signal quota problems with 400 + specific text.
-  const status = /quota|rate limit|resource_exhausted/i.test(msg) && res.status === 400 ? 429 : res.status;
+  let status = res.status;
+  if (status === 400 && /api key not valid|invalid api key|API_KEY_INVALID/i.test(msg)) status = 401;
+  else if (status === 400 && /quota|rate limit|resource_exhausted/i.test(msg)) status = 429;
   throw new ProviderError(provider, status, String(msg).slice(0, 400));
 }
 
 /* ── Gemini ───────────────────────────────────────────────────── */
 
-async function callGemini({ model, system, prompt, schema, maxTokens }: CallInput): Promise<string> {
-  const res = await fetch(
+async function geminiRequest(model: string, payload: Record<string, unknown>) {
+  return fetch(
     `${process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta"}/models/${encodeURIComponent(model)}:generateContent`,
     {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": providerKey("gemini") },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(170_000),
+    },
+  );
+}
+
+/*
+ * Gemini quirks handled here:
+ * - Thinking tokens count toward maxOutputTokens; a small budget ends in an
+ *   empty answer (finishReason MAX_TOKENS). We give a large budget and ask
+ *   for low thinking.
+ * - Some models/schemas reject responseJsonSchema or thinkingConfig (400)
+ *   or fail with 500 — we retry with the schema in the prompt instead.
+ * - 503 "overloaded" is retried once after a short pause.
+ */
+async function callGemini({ model, system, prompt, schema, maxTokens }: CallInput): Promise<string> {
+  const base = {
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+  };
+  const budget = Math.max(maxTokens * 4, 16_000);
+  const attempts: { label: string; payload: Record<string, unknown> }[] = [
+    {
+      label: "schema",
+      payload: {
+        ...base,
         generationConfig: {
           responseMimeType: "application/json",
           responseJsonSchema: schema,
-          maxOutputTokens: maxTokens,
+          maxOutputTokens: budget,
+          thinkingConfig: { thinkingLevel: "low" },
         },
-      }),
-      signal: AbortSignal.timeout(180_000),
+      },
     },
-  );
-  if (!res.ok) await failFrom("gemini", res);
-  const data = await res.json();
-  const text: string = (data.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("");
-  if (!text) {
-    const reason = data.candidates?.[0]?.finishReason ?? data.promptFeedback?.blockReason ?? "kosong";
-    throw new ProviderError("gemini", 500, `Gemini tidak memberi jawaban (${reason})`);
+    {
+      label: "prompt-schema",
+      payload: {
+        systemInstruction: base.systemInstruction,
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `${prompt}\n\nFormat jawaban WAJIB berupa JSON valid sesuai JSON Schema ini:\n${JSON.stringify(schema)}` }],
+          },
+        ],
+        generationConfig: { responseMimeType: "application/json", maxOutputTokens: budget },
+      },
+    },
+  ];
+
+  let last: ProviderError | null = null;
+  for (const attempt of attempts) {
+    for (let retry = 0; retry < 2; retry++) {
+      const res = await geminiRequest(model, attempt.payload);
+      if (res.ok) {
+        const data = await res.json();
+        const text: string = (data.candidates?.[0]?.content?.parts ?? [])
+          .filter((p: { thought?: boolean }) => !p.thought)
+          .map((p: { text?: string }) => p.text ?? "")
+          .join("");
+        if (text) return text;
+        const reason = data.candidates?.[0]?.finishReason ?? data.promptFeedback?.blockReason ?? "kosong";
+        last = new ProviderError("gemini", 502, `jawaban kosong (${reason})`);
+        break; // try the next attempt style
+      }
+      try {
+        await failFrom("gemini", res);
+      } catch (err) {
+        last = err as ProviderError;
+      }
+      if (!last) break;
+      if (last.status === 503 && retry === 0) {
+        await new Promise((r) => setTimeout(r, 4000));
+        continue;
+      }
+      break;
+    }
+    // Only fall through to the next attempt style for format/server problems.
+    if (last && ![400, 500, 502, 503].includes(last.status)) throw last;
   }
-  return text;
+  throw last ?? new ProviderError("gemini", 500, "tidak ada jawaban");
 }
 
 /* ── OpenAI-compatible (OpenAI, Groq) ─────────────────────────── */
