@@ -17,7 +17,7 @@ RUN npm ci --prefix worker
 
 COPY remotion ./remotion
 COPY components/Robot.tsx ./components/Robot.tsx
-COPY lib/brand.ts lib/types.ts lib/agents.ts lib/schemas.ts ./lib/
+COPY lib/brand.ts lib/types.ts lib/agents.ts lib/schemas.ts lib/tts.ts lib/mock.ts ./lib/
 COPY worker ./worker
 
 # Download Chrome Headless Shell at build time

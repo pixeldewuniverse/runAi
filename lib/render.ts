@@ -1,5 +1,6 @@
 import "server-only";
 import { logEvent, setAgent } from "./office";
+import { voiceInApp } from "./voice";
 import { fail as failContent } from "./pipeline/content";
 import { getBrand } from "./settings";
 import { db, now, uid } from "./store";
@@ -89,8 +90,10 @@ const workerHost = () => {
 
 /** Skip the worker: the user renders the (silent) MP4 in the browser instead. */
 async function browserFallback(contentId: string, message: string, warn = false) {
-  await setAgent("voice", "idle");
   await setAgent("editor", warn ? "error" : "idle", warn ? "Worker tidak terjangkau" : null);
+  // Vox still records the voice-over here, so the browser-made MP4 has sound.
+  const voiced = await voiceInApp(contentId);
+  if (voiced) message = message.replace("tanpa suara", "dengan voice-over");
   await db().update("contents", contentId, { status: "awaiting_final", updated_at: now() });
   await logEvent("editor", message, { ref_type: "content", ref_id: contentId, kind: "approval" });
 }

@@ -23,6 +23,7 @@ export function DownloadVideo({ scenes, brand, fileName }: Props) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   async function render() {
@@ -32,15 +33,27 @@ export function DownloadVideo({ scenes, brand, fileName }: Props) {
     abort.current = new AbortController();
     try {
       const { canRenderMediaOnWeb, renderMediaOnWeb } = await import("@remotion/web-renderer");
-      const muted = !scenes.some((s) => s.audio_url);
+      const hasAudio = scenes.some((s) => s.audio_url || s.track_url);
 
-      // Prefer MP4 (best for TikTok/IG and iPhone); fall back to WebM where MP4 encoding isn't available.
+      // Prefer MP4 (best for TikTok/IG and iPhone); fall back to WebM, and as a
+      // last resort drop the audio if this browser can't encode it.
+      const attempts: { container: "mp4" | "webm"; muted: boolean }[] = [
+        { container: "mp4", muted: !hasAudio },
+        { container: "webm", muted: !hasAudio },
+        ...(hasAudio ? [{ container: "mp4" as const, muted: true }, { container: "webm" as const, muted: true }] : []),
+      ];
       let container: "mp4" | "webm" = "mp4";
+      let muted = !hasAudio;
       let check = await canRenderMediaOnWeb({ width: WIDTH, height: HEIGHT, container, muted });
-      if (!check.canRender) {
-        container = "webm";
-        check = await canRenderMediaOnWeb({ width: WIDTH, height: HEIGHT, container, muted });
+      for (const a of attempts) {
+        check = await canRenderMediaOnWeb({ width: WIDTH, height: HEIGHT, container: a.container, muted: a.muted });
+        if (check.canRender) {
+          container = a.container;
+          muted = a.muted;
+          break;
+        }
       }
+      if (hasAudio && muted) setNote("Browser ini tidak bisa menyimpan audio — video dibuat tanpa suara. Coba Chrome terbaru.");
       if (!check.canRender) {
         throw new Error(
           check.issues.find((i) => i.severity === "error")?.message ??
@@ -135,8 +148,9 @@ export function DownloadVideo({ scenes, brand, fileName }: Props) {
         </Button>
       )}
       {state === "error" && <p className="text-center text-xs text-danger">{error}</p>}
-      {!scenes.some((s) => s.audio_url) && (
-        <p className="text-center text-xs text-mute">Video tanpa suara — tambahkan musik/voice-over saat posting.</p>
+      {note && <p className="text-center text-xs text-ink-2">{note}</p>}
+      {!scenes.some((s) => s.audio_url || s.track_url) && (
+        <p className="text-center text-xs text-mute">Video tanpa suara — isi GEMINI_API_KEY supaya Vox membuat voice-over otomatis.</p>
       )}
     </div>
   );
