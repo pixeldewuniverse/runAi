@@ -241,6 +241,16 @@ function PickIdea({
               <span className="font-mono text-[10px] uppercase text-mute">hook </span>“{idea.hook}”
             </p>
             <p className="mt-2 text-sm text-ink-2">{idea.angle}</p>
+            {idea.key_points?.length ? (
+              <ul className="mt-2 space-y-1 text-sm">
+                {idea.key_points.map((k, j) => (
+                  <li key={j} className="flex gap-2">
+                    <span className="mt-1.5 size-1.5 shrink-0 bg-dew" />
+                    {k}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <p className="mt-1 text-xs text-mute">
               {idea.format} · {idea.why}
             </p>
@@ -253,12 +263,22 @@ function PickIdea({
       {own ? (
         <div className="card mt-3 space-y-2 p-4">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Judul / topik" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none" />
-          <textarea value={angle} onChange={(e) => setAngle(e.target.value)} placeholder="Poin utama yang mau disampaikan" rows={3} className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none" />
+          <textarea value={angle} onChange={(e) => setAngle(e.target.value)} placeholder="Poin-poin yang mau disampaikan (satu per baris)" rows={3} className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm outline-none" />
           <Button
             className="w-full"
             disabled={title.trim().length < 3 || !!busy}
             loading={busy === "pick"}
-            onClick={() => onCustom({ title, angle, hook: "", pillar: "Pilihan pemilik brand", format: "Bebas", why: "Ide dari pemilik brand" })}
+            onClick={() =>
+              onCustom({
+                title,
+                angle,
+                key_points: angle.split("\n").map((x) => x.trim()).filter(Boolean),
+                hook: "",
+                pillar: "Pilihan pemilik brand",
+                format: "Bebas",
+                why: "Ide dari pemilik brand",
+              })
+            }
           >
             Pakai ide saya
           </Button>
@@ -282,6 +302,7 @@ function ScriptView({ c }: { c: ContentRow }) {
             <span className="font-mono text-xs text-mute">{String(i + 1).padStart(2, "0")}</span>
             <div className="min-w-0 flex-1">
               <p className="text-sm">{sc.voiceover}</p>
+              {sc.detail ? <p className="mt-1 text-xs text-ink-2">↳ {sc.detail}</p> : null}
               <p className="mt-1 text-xs text-mute">
                 Layar: <b className="text-ink-2">{c.scenes?.[i]?.headline ?? sc.on_screen}</b> · {c.scenes?.[i]?.layout ?? "—"} · {sc.seconds}s
               </p>

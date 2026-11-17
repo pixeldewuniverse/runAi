@@ -38,8 +38,13 @@ export interface RenderScene {
   on_screen: string;
   seconds: number;
   layout: Storyboard["scenes"][number]["layout"];
+  /** Older rows may not have the newer fields — the template treats them as optional. */
+  theme?: Storyboard["scenes"][number]["theme"];
   headline: string;
+  body?: string;
   items: string[];
+  items_b?: string[];
+  labels?: string[];
   code: string;
   stat: string;
   accent: string;

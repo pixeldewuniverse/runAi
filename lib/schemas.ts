@@ -21,6 +21,7 @@ export const IdeaSchema = z.object({
   pillar: z.string(),
   hook: z.string(),
   angle: z.string(),
+  key_points: z.array(z.string()).describe("3-5 poin isi KONKRET yang akan diajarkan (langkah, tool, angka, contoh)"),
   format: z.string(),
   why: z.string(),
 });
@@ -33,7 +34,8 @@ export const ScriptSchema = z.object({
   scenes: z.array(
     z.object({
       voiceover: z.string(),
-      on_screen: z.string(),
+      on_screen: z.string().describe("Judul layar, maks 7 kata"),
+      detail: z.string().describe("Info pendukung di layar: contoh, angka, perintah, atau penjelasan singkat (maks 18 kata)"),
       seconds: z.number(),
     }),
   ),
@@ -42,15 +44,28 @@ export const ScriptSchema = z.object({
 });
 export type Script = z.infer<typeof ScriptSchema>;
 
-export const LAYOUTS = ["hook", "statement", "list", "code", "stat", "compare", "cta"] as const;
+export const ReviewSchema = z.object({
+  score: z.number().describe("Nilai 1-10 untuk seberapa informatif & menarik script awal"),
+  issues: z.array(z.string()),
+  script: ScriptSchema,
+});
+
+export const LAYOUTS = ["hook", "statement", "list", "steps", "code", "stat", "compare", "chat", "tip", "cta"] as const;
 export type Layout = (typeof LAYOUTS)[number];
+
+export const THEMES = ["light", "dark", "accent"] as const;
+export type Theme = (typeof THEMES)[number];
 
 export const StoryboardSceneSchema = z.object({
   layout: z.enum(LAYOUTS),
-  headline: z.string().describe("Teks utama di layar, maks 8 kata"),
-  items: z.array(z.string()).describe("Untuk list: 2-4 poin. Untuk compare: tepat 2 (A, B). Lainnya: kosong"),
-  code: z.string().describe("Untuk layout code: potongan kode maks 6 baris. Lainnya: kosong"),
-  stat: z.string().describe("Untuk layout stat: angka/nilai besar. Lainnya: kosong"),
+  theme: z.enum(THEMES).describe("light = kertas terang, dark = latar gelap, accent = latar warna aksen penuh"),
+  headline: z.string().describe("Teks utama di layar, maks 7 kata"),
+  body: z.string().describe("Teks pendukung 1-2 baris (maks 18 kata). Kosong untuk hook/cta jika tidak perlu"),
+  items: z.array(z.string()).describe("list/steps: 2-4 poin pendek. compare: poin kolom A. chat: [pertanyaan/prompt, jawaban AI]. Lainnya: kosong"),
+  items_b: z.array(z.string()).describe("compare: poin kolom B. Lainnya: kosong"),
+  labels: z.array(z.string()).describe("compare: 2 label kolom, mis. [\"Salah\", \"Benar\"]. Lainnya: kosong"),
+  code: z.string().describe("code: potongan kode/perintah maks 6 baris. Lainnya: kosong"),
+  stat: z.string().describe("stat: angka/nilai besar, mis. 3x, 70%, 10 menit. Lainnya: kosong"),
   accent: z.string().describe("Warna aksen hex dari palet brand"),
 });
 export type StoryboardScene = z.infer<typeof StoryboardSceneSchema>;

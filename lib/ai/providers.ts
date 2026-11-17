@@ -26,7 +26,7 @@ export const PROVIDERS: Record<
     env: "GROQ_API_KEY",
     defaultModel: "openai/gpt-oss-120b",
     free: true,
-    webSearch: false,
+    webSearch: true, // GPT-OSS browser_search; falls back silently if not allowed
     keyUrl: "https://console.groq.com/keys",
   },
   openai: {
@@ -208,14 +208,30 @@ async function callGeminiModel({ model, system, prompt, schema, maxTokens }: Cal
 
 /* ── OpenAI-compatible (OpenAI, Groq) ─────────────────────────── */
 
-async function callOpenAICompatible(
+async function callOpenAICompatible(provider: "openai" | "groq", input: CallInput): Promise<string> {
+  // Groq's GPT-OSS models have a built-in browser search tool. It can't be combined
+  // with response_format, so the schema goes in the prompt; if the account/model
+  // doesn't allow the tool we fall back to the normal structured call.
+  if (provider === "groq" && input.webSearch && input.model.startsWith("openai/gpt-oss")) {
+    try {
+      return await chatCompletion(provider, input, { search: true });
+    } catch (err) {
+      if (!(err instanceof ProviderError) || ![400, 403, 404, 422].includes(err.status)) throw err;
+    }
+  }
+  return chatCompletion(provider, input, { search: false });
+}
+
+async function chatCompletion(
   provider: "openai" | "groq",
   { model, system, prompt, schema, maxTokens }: CallInput,
+  { search }: { search: boolean },
 ): Promise<string> {
   const base =
     provider === "groq"
       ? process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1"
       : process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+  const gptOss = model.startsWith("openai/gpt-oss");
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${providerKey(provider)}` },
@@ -223,15 +239,24 @@ async function callOpenAICompatible(
       model,
       messages: [
         { role: "system", content: system },
-        { role: "user", content: prompt },
+        {
+          role: "user",
+          content: search
+            ? `${prompt}\n\nCari informasi terbaru di web dulu, lalu jawab HANYA dengan JSON valid sesuai JSON Schema ini:\n${JSON.stringify(schema)}`
+            : prompt,
+        },
       ],
-      response_format: {
-        type: "json_schema",
-        json_schema: { name: "agent_output", schema, strict: provider === "openai" || model.startsWith("openai/gpt-oss") },
-      },
-      max_completion_tokens: model.startsWith("openai/gpt-oss") ? Math.max(maxTokens * 2, 8000) : maxTokens,
+      ...(search
+        ? { tools: [{ type: "browser_search" }] }
+        : {
+            response_format: {
+              type: "json_schema",
+              json_schema: { name: "agent_output", schema, strict: provider === "openai" || gptOss },
+            },
+          }),
+      max_completion_tokens: gptOss ? Math.max(maxTokens * 2, 8000) : maxTokens,
       // Same setting as the Dewbit chatbot: gpt-oss reasons first, keep it short.
-      ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
+      ...(gptOss ? { reasoning_effort: search ? "medium" : "low" } : {}),
     }),
     signal: AbortSignal.timeout(180_000),
   });
