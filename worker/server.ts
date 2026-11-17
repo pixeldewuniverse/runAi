@@ -79,5 +79,5 @@ createServer(async (req, res) => {
 }).listen(PORT, () => {
   console.log(`render worker on :${PORT}`);
   // Warm the webpack bundle so the first job starts faster.
-  getBundle().then(() => console.log("bundle ready")).catch((e) => console.error("bundle failed", e));
+  getBundle().then(() => console.log("bundle ready")).catch((e: unknown) => console.error("bundle failed", e));
 });
