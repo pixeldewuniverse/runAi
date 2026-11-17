@@ -90,7 +90,7 @@ supabase/migrations  skema database
 ## Penyedia AI
 
 Atur di **Setelan → Penyedia AI**:
-- **Otomatis** memakai yang gratis dulu (Gemini → Groq → OpenAI → Claude), sesuai key yang terpasang.
+- **Otomatis** memakai yang gratis dulu (Groq → Gemini → OpenAI → Claude), sesuai key yang terpasang.
 - **Cadangan otomatis**: kalau kuota habis, key salah, atau server error, agent pindah ke penyedia berikutnya. Kejadiannya tercatat di feed aktivitas.
 - Batas per menit (free tier) ditunggu sekali sebelum pindah penyedia.
 - Riset internet langsung (Scout & Reza) hanya aktif dengan Claude. Google Search di Gemini tidak termasuk free tier.
