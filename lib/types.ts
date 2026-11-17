@@ -48,8 +48,10 @@ export interface RenderScene {
   code: string;
   stat: string;
   accent: string;
-  /** Filled by the render worker once TTS exists. */
+  /** Per-scene voice-over, filled by the render worker. */
   audio_url?: string;
+  /** Whole-video voice-over track (made in the app); only set on the first scene. */
+  track_url?: string;
 }
 
 export interface ContentRow {

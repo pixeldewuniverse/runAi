@@ -1,13 +1,13 @@
 import type { CSSProperties, ReactNode } from "react";
 import {
   AbsoluteFill,
-  Html5Audio,
   interpolate,
   Sequence,
   spring,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { Audio } from "@remotion/media";
 import { Robot } from "../components/Robot";
 import type { RenderScene } from "../lib/types";
 
@@ -103,10 +103,11 @@ export function PixeldewVideo({ scenes, brand }: VideoProps) {
   const starts = scenes.reduce<number[]>((acc, _s, i) => [...acc, i === 0 ? 0 : acc[i - 1] + sceneFrames(scenes[i - 1])], []);
   return (
     <AbsoluteFill style={{ background: brand.palette.ink, fontFamily: SANS }}>
+      {scenes[0]?.track_url ? <Audio src={scenes[0].track_url} /> : null}
       {scenes.map((scene, i) => (
         <Sequence key={i} from={starts[i]} durationInFrames={sceneFrames(scene)} name={`${i + 1}. ${scene.layout}`}>
           <SceneView scene={scene} brand={brand} index={i} total={scenes.length} />
-          {scene.audio_url ? <Html5Audio src={scene.audio_url} /> : null}
+          {scene.audio_url ? <Audio src={scene.audio_url} /> : null}
         </Sequence>
       ))}
     </AbsoluteFill>
