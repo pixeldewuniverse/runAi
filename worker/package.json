@@ -1,0 +1,16 @@
+{
+  "name": "runai-render-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx server.ts",
+    "test:render": "tsx test-render.ts"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.544",
+    "@remotion/renderer": "4.0.544",
+    "@supabase/supabase-js": "^2.119.0",
+    "music-metadata": "^11.0.0",
+    "tsx": "^4.20.0"
+  }
+}
